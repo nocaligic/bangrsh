@@ -34,7 +34,7 @@ export function useOrderBook(
   const { data: buyOrders } = useReadContract({
     address: orderBookAddress,
     abi: abis.orderBook,
-    functionName: 'getOrders',
+    functionName: 'getMarketOrders',
     args: [BigInt(marketId), isYesShare, true],
     chainId,
   });
@@ -43,7 +43,7 @@ export function useOrderBook(
   const { data: sellOrders } = useReadContract({
     address: orderBookAddress,
     abi: abis.orderBook,
-    functionName: 'getOrders',
+    functionName: 'getMarketOrders',
     args: [BigInt(marketId), isYesShare, false],
     chainId,
   });
