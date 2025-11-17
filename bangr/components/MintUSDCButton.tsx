@@ -21,7 +21,7 @@ const ERC20_ABI = [
   }
 ] as const;
 
-export function MintUSDCButton() {
+export function MintUSDCButton({ className }: { className?: string }) {
   const { address } = useAccount();
   const [isPending, setIsPending] = useState(false);
 
@@ -54,10 +54,9 @@ export function MintUSDCButton() {
     <Button
       onClick={handleMint}
       disabled={isPending || isConfirming}
-      variant="outline"
-      className="border-3 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all font-bold"
+      className={className || "nb-button bg-green-500 text-black px-4 py-2 text-sm font-pixel"}
     >
-      {isPending || isConfirming ? 'Minting...' : '💰 Mint Test USDC'}
+      {isPending || isConfirming ? 'Minting...' : 'Mint Test USDC'}
     </Button>
   );
 }

@@ -12,11 +12,11 @@ export const contracts = {
   },
   // BNB Testnet (97)
   bscTestnet: {
-    usdc: '', // Add after deployment
-    shareToken: '',
-    marketFactory: '',
-    orderBook: '',
-    oracle: '',
+    usdc: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd',
+    shareToken: '0xA9dC1aBD1Bef785f9cE7a369836Bc0678e24CD97',
+    marketFactory: '0x6BAad96CDf18014AFD790fA80B64f1AcF259c115',
+    orderBook: '0x37f995E07136CD18F6F34C1FBD9F04bDFf845058',
+    oracle: '0x4d52A24F5Ba5558Fe0d1F86997420BeAe5f204cB',
   },
   // BNB Mainnet (56)
   bscMainnet: {

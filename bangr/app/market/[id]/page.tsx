@@ -113,7 +113,7 @@ const marketDataMap: any = {
 
 export default async function MarketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const market = marketDataMap[parseInt(id)] || marketDataMap[1];
+  const marketId = parseInt(id);
 
-  return <MarketDetailClient market={market} />;
+  return <MarketDetailClient marketId={marketId} />;
 }

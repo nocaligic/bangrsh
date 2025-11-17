@@ -1,21 +1,25 @@
 import { useReadContract, useReadContracts } from 'wagmi';
 import { getContractAddress } from '../contracts/addresses';
 import abis from '../contracts/abis.json';
+import type { Market } from '../types/market';
 
 // Hook to get a single market's data
-export function useMarket(marketId: number, chainId: number) {
+export function useMarket(marketId: number | undefined, chainId: number) {
   const marketFactoryAddress = getContractAddress(chainId, 'marketFactory');
 
   const { data, isLoading, error, refetch } = useReadContract({
     address: marketFactoryAddress,
     abi: abis.marketFactory,
     functionName: 'getMarket',
-    args: [BigInt(marketId)],
+    args: marketId !== undefined ? [BigInt(marketId)] : undefined,
     chainId,
+    query: {
+      enabled: marketId !== undefined && !isNaN(marketId),
+    },
   });
 
   return {
-    market: data,
+    market: data as Market | undefined,
     isLoading,
     error,
     refetch,

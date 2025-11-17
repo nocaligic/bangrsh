@@ -1,177 +1,154 @@
-import { Clock } from "lucide-react";
+import React from 'react';
+import { ExternalLink } from 'lucide-react';
 
 interface BangrCardProps {
+  id: number;
   username: string;
-  timeAgo: string;
+  displayName: string;
   tweetText: string;
   tweetImage?: string;
-  currentViews: number;
-  targetViews: number;
   yesPrice: number;
   noPrice: number;
-  timeRemaining: string;
   volume: string;
-  bettors: number;
-  isClaimed?: boolean;
-  claimedBy?: string;
-  isEndingSoon?: boolean;
-  isHighVolume?: boolean;
-  isResolved?: boolean;
-  outcome?: "yes" | "no";
+  color: string;
+  timeLeft: string;
+  tag: 'HOT' | 'NEW' | string;
+  trendingMetric: 'views' | 'likes' | 'retweets' | 'comments';
+  targetValue: string;
 }
 
-function formatViews(views: number): string {
-  if (views >= 1000000) {
-    return `${(views / 1000000).toFixed(1)}M`;
-  }
-  if (views >= 1000) {
-    return `${(views / 1000).toFixed(1)}K`;
-  }
-  return views.toString();
-}
+const metricStrokeColors: Record<BangrCardProps["trendingMetric"], string> = {
+  views: "#3b82f6",    // blue
+  likes: "#ec4899",    // pink
+  retweets: "#22c55e", // green
+  comments: "#a855f7", // purple
+};
 
-export function BangrCard({
+const tagEmojis: Record<string, string> = {
+  HOT: "🔥",
+  NEW: "✨",
+  TRENDING: "📈",
+  CLOSING: "⏳",
+  "BIG BETS": "💰",
+  RESOLVED: "✅",
+};
+
+const BangrCard: React.FC<BangrCardProps> = ({
+  id,
   username,
-  timeAgo,
+  displayName,
   tweetText,
-  tweetImage,
-  currentViews,
-  targetViews,
+  tweetImage = "https://placehold.co/400x250/000000/FFFFFF?text=Tweet+Image",
   yesPrice,
   noPrice,
-  timeRemaining,
   volume,
-  bettors,
-  isClaimed = false,
-  claimedBy,
-  isEndingSoon = false,
-  isHighVolume = false,
-  isResolved = false,
-  outcome
-}: BangrCardProps) {
-  const progressPercentage = (currentViews / targetViews) * 100;
-  const formattedCurrent = formatViews(currentViews);
-  const formattedTarget = formatViews(targetViews);
-
-  // Truncate tweet text to 100 characters
-  const truncatedText = tweetText.length > 100 
-    ? tweetText.substring(0, 100) + "..." 
-    : tweetText;
+  color,
+  timeLeft,
+  tag,
+  trendingMetric,
+  targetValue
+}) => {
+  const metricColor = metricStrokeColors[trendingMetric] || "#000000";
+  const tagKey = tag.toUpperCase();
+  const tagEmoji = tagEmojis[tagKey] || "";
 
   return (
-    <div 
-      className={`relative bg-white rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] hover:translate-y-[-4px] transition-all duration-200 p-5 w-full max-w-[360px] ${
-        isResolved ? 'opacity-70' : ''
-      } ${isClaimed ? 'ring-4 ring-yellow-400 ring-offset-4 ring-offset-white' : ''}`}
-      style={{ height: '500px' }}
-    >
-      {/* HEADER (50px) */}
-      <div className="flex items-center justify-between mb-4" style={{ height: '50px' }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-black flex items-center justify-center text-white flex-shrink-0">
-            {username[0].toUpperCase()}
-          </div>
-          <span className="text-sm text-gray-600">@{username} • {timeAgo}</span>
-        </div>
-        {isClaimed && claimedBy && (
-          <div className="bg-yellow-400 border-2 border-black px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0">
-            <span className="text-xs">🔥</span>
-          </div>
-        )}
-        {isHighVolume && !isClaimed && (
-          <div className="bg-orange-400 border-2 border-black px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0">
-            <span className="text-xs">🔥 HOT</span>
-          </div>
-        )}
-      </div>
-
-      {/* TWEET CONTENT (120px) */}
-      <div className="mb-4" style={{ height: '120px' }}>
-        {tweetImage && (
-          <img 
-            src={tweetImage} 
-            alt="Tweet" 
-            className="w-full h-20 object-cover rounded-lg border-2 border-black mb-2" 
-          />
-        )}
-        <p className="text-sm text-gray-800 line-clamp-2">
-          {truncatedText}
-        </p>
-      </div>
-
-      {/* MARKET QUESTION (60px) */}
-      <div className="mb-4" style={{ height: '60px' }}>
-        <h3 className="text-xl leading-tight" style={{ fontWeight: 700, color: '#1A1A1A' }}>
-          Will this hit <span className="text-yellow-500">{formattedTarget}</span> views in 24h?
-        </h3>
-      </div>
-
-      {/* PROGRESS INDICATOR (40px) */}
-      <div className="mb-4" style={{ height: '40px' }}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-gray-700">📊 {formattedCurrent} / {formattedTarget}</span>
-        </div>
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden border-2 border-black">
-          <div 
-            className="h-full bg-gradient-to-r from-teal-400 to-green-400 transition-all duration-300"
-            style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-          />
-        </div>
-      </div>
-
-      {/* TRADE BUTTONS (100px) */}
-      <div className="flex gap-3 mb-4" style={{ height: '100px' }}>
-        <button 
-          className={`flex-1 bg-teal-400 border-4 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] active:translate-y-[1px] active:shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all duration-150 ${
-            isResolved ? 'cursor-not-allowed opacity-60' : ''
-          } ${outcome === 'yes' ? 'ring-4 ring-green-500' : ''}`}
-          disabled={isResolved}
+    <div className={`${color} nb-border nb-shadow flex flex-col nb-pattern-dots`}>
+      {/* Card Header */}
+      <header className="flex justify-between items-center p-3 border-b-2 border-black font-bold">
+        <div
+          className={`flex items-center gap-1 ${
+            tag === "HOT" ? "bg-red-500 text-white" : "bg-white text-black"
+          } px-2 py-1 text-sm border-2 border-black`}
         >
-          <div className="flex flex-col items-center justify-center h-full">
-            <span className="text-lg text-white mb-1" style={{ fontWeight: 700 }}>YES</span>
-            <span className="text-2xl text-white" style={{ fontWeight: 700 }}>${yesPrice.toFixed(2)}</span>
-            {outcome === 'yes' && <span className="text-lg mt-1">✅</span>}
+          {tag === "HOT" && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 4a1 1 0 000 2 1 1 0 011 1v1a1 1 0 01-1 1 1 1 0 000 2 3 3 0 003 3v1a1 1 0 001 1h.5a1 1 0 001-1v-1a3 3 0 003-3 1 1 0 000-2 1 1 0 01-1-1V7a1 1 0 011-1 1 1 0 000-2H7z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+          <span>{tag}</span>
+        </div>
+        <div className="bg-white px-2 py-1 text-sm border-2 border-black">
+          {volume}
+        </div>
+        <div className="bg-white px-2 py-1 text-sm border-2 border-black">
+          {timeLeft}
+        </div>
+      </header>
+
+      {/* Tweet Content */}
+      <div className="p-4 bg-white relative group cursor-pointer">
+        {/* Hover Overlay */}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10">
+          <div className="text-white text-2xl font-bold flex items-center gap-2">
+            <span>View Market</span>
+            <ExternalLink className="w-6 h-6" />
           </div>
-        </button>
-        
-        <button 
-          className={`flex-1 bg-red-400 border-4 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] active:translate-y-[1px] active:shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all duration-150 ${
-            isResolved ? 'cursor-not-allowed opacity-60' : ''
-          } ${outcome === 'no' ? 'ring-4 ring-green-500' : ''}`}
-          disabled={isResolved}
-        >
-          <div className="flex flex-col items-center justify-center h-full">
-            <span className="text-lg text-white mb-1" style={{ fontWeight: 700 }}>NO</span>
-            <span className="text-2xl text-white" style={{ fontWeight: 700 }}>${noPrice.toFixed(2)}</span>
-            {outcome === 'no' && <span className="text-lg mt-1">✅</span>}
+        </div>
+
+        {/* Tweet Author */}
+        <div className="flex items-center gap-2 mb-3">
+          <img
+            src={`https://placehold.co/48x48/1DA1F2/FFFFFF?text=${displayName.charAt(
+              0
+            )}`}
+            alt={displayName}
+            className="w-12 h-12 nb-border"
+          />
+          <div>
+            <div className="font-bold">{displayName}</div>
+            <div className="text-sm text-neutral-600">@{username}</div>
           </div>
-        </button>
+        </div>
+        {/* Tweet Text */}
+        <p className="text-sm mb-3">{tweetText}</p>
+        {/* Tweet Image */}
+        <img
+          src={tweetImage}
+          alt="Tweet"
+          className="w-full h-auto nb-border mb-3"
+        />
+        {/* Tweet Stats */}
+        <div className="flex justify-between text-sm text-neutral-600">
+          <span>1.2K Comments</span>
+          <span className="mx-2">3.8K Retweets</span>
+          <span>8.9K Likes</span>
+        </div>
       </div>
 
-      {/* METADATA (60px) */}
-      <div className="flex items-center justify-between text-sm" style={{ height: '60px' }}>
-        <div className={`flex items-center gap-1 ${isEndingSoon ? 'text-red-600 animate-pulse' : 'text-gray-700'}`}>
-          <Clock className="w-4 h-4" />
-          <span>{timeRemaining} left</span>
-        </div>
-        <div className="flex items-center gap-1 text-gray-700">
-          <span>💰</span>
-          <span>{volume}</span>
-        </div>
-        <div className="flex items-center gap-1 text-gray-700">
-          <span>👥</span>
-          <span>{bettors}</span>
-        </div>
+      {/* Prediction Question */}
+      <div className="p-3 border-y-2 border-black font-bold text-center text-sm bg-yellow-400 text-black font-pixel nb-scanlines relative z-10">
+        Will this hit {targetValue} VIEWS in 24h?
       </div>
 
-      {/* Resolved Overlay */}
-      {isResolved && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none rounded-2xl">
-          <div className="bg-black text-white px-6 py-3 rounded-xl border-4 border-yellow-400 transform rotate-[-12deg] shadow-lg">
-            <span className="text-2xl" style={{ fontWeight: 900 }}>RESOLVED</span>
-          </div>
+      {/* Prediction Actions */}
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <button className="nb-button bg-green-500 text-white p-3 text-lg">
+            <div>YES</div>
+            <div className="text-2xl font-black">{yesPrice}¢</div>
+          </button>
+          <button className="nb-button bg-red-500 text-white p-3 text-lg">
+            <div>NO</div>
+            <div className="text-2xl font-black">{noPrice}¢</div>
+          </button>
         </div>
-      )}
+        <div className="flex justify-between items-center text-sm font-medium">
+          <span>234 traders</span>
+          <span className="text-green-700 font-bold">↑ YES ahead</span>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default BangrCard;
