@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
 async function main() {
-  const mockUSDCAddress = "0x337610d27c682E347C9cD60BD4b3b107C9d34dDd"; // Correct address from deployment
+  const mockUSDCAddress = "0x64142706680e2707e5D23887505c5DD54855a779"; // MockUSDC address from deployment
   // Use environment variable or default address
   const recipientAddress = process.env.RECIPIENT_ADDRESS || "0xD59D85C97fCA768B35c781779d0a9e0e6b177F0a";
   const amount = hre.ethers.parseUnits("1000", 6); // 1000 USDC

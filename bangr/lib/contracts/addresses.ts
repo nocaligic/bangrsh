@@ -12,11 +12,11 @@ export const contracts = {
   },
   // BNB Testnet (97)
   bscTestnet: {
-    usdc: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd',
-    shareToken: '0xA9dC1aBD1Bef785f9cE7a369836Bc0678e24CD97',
-    marketFactory: '0x6BAad96CDf18014AFD790fA80B64f1AcF259c115',
-    orderBook: '0x37f995E07136CD18F6F34C1FBD9F04bDFf845058',
-    oracle: '0x4d52A24F5Ba5558Fe0d1F86997420BeAe5f204cB',
+    usdc: '0x64142706680e2707e5D23887505c5DD54855a779', // MockUSDC (mintable)
+    shareToken: '0x537c9f1a5A96B4C2BAe09A215050f97A7B6167a0',
+    marketFactory: '0x3ffB880761A8E9c0cDF40718AC8BAEFEf40aC627',
+    orderBook: '0xefEbeA058D3e6cAaD96F9674Bc88ba3721FBa205',
+    oracle: '0x159c2D054c950f3fAC63d1806ce044285aCc059d',
   },
   // BNB Mainnet (56)
   bscMainnet: {

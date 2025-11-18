@@ -27,9 +27,14 @@ export function MintUSDCButton({ className }: { className?: string }) {
 
   const { writeContract, data: hash } = useWriteContract();
 
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Reset isPending when transaction succeeds
+  if (isSuccess && isPending) {
+    setIsPending(false);
+  }
 
   const handleMint = async () => {
     if (!address) return;
