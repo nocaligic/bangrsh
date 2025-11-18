@@ -5,6 +5,7 @@ import { getContractAddress } from '../contracts/addresses';
 import abis from '../contracts/abis.json';
 import { UserPosition } from '../types/market';
 import { DEFAULT_CHAIN_ID, DEFAULT_PRICES } from '../constants';
+import { useTradeHistory } from './useTradeHistory';
 
 export type { UserPosition };
 
@@ -15,6 +16,9 @@ export function useUserPositions() {
   const [positions, setPositions] = useState<UserPosition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(0);
+  
+  // Get trade history for accurate cost tracking
+  const { getTotalSpent, getAveragePurchasePrice, isLoading: tradesLoading } = useTradeHistory();
 
   const marketFactoryAddress = getContractAddress(chainId, 'marketFactory');
   const shareTokenAddress = getContractAddress(chainId, 'shareToken');
@@ -36,7 +40,7 @@ export function useUserPositions() {
         chainId
       });
 
-      if (!address || !nextMarketId || !publicClient) {
+      if (!address || !nextMarketId || !publicClient || tradesLoading) {
         console.log('[useUserPositions] Missing requirements, returning empty');
         setPositions([]);
         setIsLoading(false);
@@ -98,6 +102,14 @@ export function useUserPositions() {
               const currentValue = (shares * currentPrice) / 100;
               const status = Number(market.status); // 0=PENDING, 1=RESOLVED_YES, 2=RESOLVED_NO, 3=RESOLVED_INVALID
 
+              // Get actual cost from trade history
+              const actualCost = getTotalSpent(i, 'YES');
+              const avgPurchasePrice = getAveragePurchasePrice(i, 'YES');
+              
+              // Use actual cost if available, otherwise estimate
+              const invested = actualCost > 0 ? actualCost : currentValue;
+              const avgPrice = avgPurchasePrice > 0 ? avgPurchasePrice * 100 : currentPrice; // Convert to cents
+
               // Calculate if redeemable and payout amount
               let isRedeemable = false;
               let redeemableAmount = 0;
@@ -116,6 +128,10 @@ export function useUserPositions() {
                 yesBalance: yesBalance.toString(),
                 currentPrice,
                 currentValue,
+                actualCost,
+                avgPurchasePrice,
+                invested,
+                avgPrice,
                 status,
                 isRedeemable,
                 redeemableAmount
@@ -128,8 +144,8 @@ export function useUserPositions() {
                 metric: Number(market.metric || 0),
                 outcome: 'YES',
                 shares,
-                invested: currentValue, // Estimate based on current price
-                avgPrice: currentPrice,
+                invested, // Actual amount spent
+                avgPrice, // Actual average price paid
                 marketTitle: `Will ${market.authorHandle}'s tweet reach ${Number(market.targetValue).toLocaleString()} views?`,
                 currentPrice,
                 color: 'bg-gradient-to-br from-green-300 to-green-400',
@@ -147,6 +163,14 @@ export function useUserPositions() {
               const currentPrice = DEFAULT_PRICES.NO_SHARE;
               const currentValue = (shares * currentPrice) / 100;
               const status = Number(market.status); // 0=PENDING, 1=RESOLVED_YES, 2=RESOLVED_NO, 3=RESOLVED_INVALID
+
+              // Get actual cost from trade history
+              const actualCost = getTotalSpent(i, 'NO');
+              const avgPurchasePrice = getAveragePurchasePrice(i, 'NO');
+              
+              // Use actual cost if available, otherwise estimate
+              const invested = actualCost > 0 ? actualCost : currentValue;
+              const avgPrice = avgPurchasePrice > 0 ? avgPurchasePrice * 100 : currentPrice; // Convert to cents
 
               // Calculate if redeemable and payout amount
               let isRedeemable = false;
@@ -168,8 +192,8 @@ export function useUserPositions() {
                 metric: Number(market.metric || 0),
                 outcome: 'NO',
                 shares,
-                invested: currentValue, // Estimate based on current price
-                avgPrice: currentPrice,
+                invested, // Actual amount spent
+                avgPrice, // Actual average price paid
                 marketTitle: `Will ${market.authorHandle}'s tweet reach ${Number(market.targetValue).toLocaleString()} views?`,
                 currentPrice,
                 color: 'bg-gradient-to-br from-red-300 to-red-400',
@@ -196,7 +220,7 @@ export function useUserPositions() {
     }
 
     fetchPositions();
-  }, [address, nextMarketId, chainId, publicClient, marketFactoryAddress, shareTokenAddress, lastUpdate]);
+  }, [address, nextMarketId, chainId, publicClient, marketFactoryAddress, shareTokenAddress, lastUpdate, tradesLoading, getTotalSpent, getAveragePurchasePrice]);
 
   // Watch for share transfers (when shares are bought, sold, or transferred)
   useWatchContractEvent({

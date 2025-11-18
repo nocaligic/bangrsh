@@ -79,6 +79,17 @@ contract OrderBook is Ownable, ReentrancyGuard {
         uint256 protocolFee
     );
 
+    event TradeExecuted(
+        uint256 indexed marketId,
+        address indexed trader,
+        bool indexed isYesShare,
+        bool isBuy,
+        uint256 shares,
+        uint256 pricePerShare,
+        uint256 totalCost,
+        uint256 timestamp
+    );
+
     constructor(
         address _shareToken,
         address _collateralToken,
@@ -364,6 +375,18 @@ contract OrderBook is Ownable, ReentrancyGuard {
         _distributeFees(makerOrder.marketId, takerFee);
 
         emit OrderFilled(makerOrderId, taker, shares, cost);
+        
+        // Emit trade event for tracking purchase history
+        emit TradeExecuted(
+            makerOrder.marketId,
+            taker,
+            makerOrder.isYesShare,
+            takerIsBuying,
+            shares,
+            makerOrder.pricePerShare,
+            cost + takerFee, // Total cost including fee
+            block.timestamp
+        );
     }
 
     /**
