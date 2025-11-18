@@ -31,12 +31,12 @@ export function useMarkets() {
 
       try {
         const marketPromises = [];
-        for (let marketId = 1; marketId <= totalMarkets; marketId++) {
+        for (let marketId = 0; marketId < totalMarkets; marketId++) {
           marketPromises.push(
             publicClient.readContract({
               address: ADDRESSES.MARKET_FACTORY,
               abi: MARKET_FACTORY_ABI,
-              functionName: "getMarket",
+              functionName: "markets",
               args: [BigInt(marketId)],
             })
           );
@@ -45,7 +45,7 @@ export function useMarkets() {
         const marketResults = await Promise.all(marketPromises);
         const fetchedMarkets = marketResults.map((market: any, index) => ({
           ...market,
-          index: index + 1,
+          index: index,
         }));
 
         setMarkets(fetchedMarkets);
