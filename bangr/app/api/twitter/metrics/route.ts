@@ -82,15 +82,16 @@ export async function POST(request: NextRequest) {
       tweet.bookmarkCount ?? publicMetrics.bookmark_count ?? 0;
 
     const avatarUrl =
+      author.profilePicture ||
       author.profileImageUrl ||
       author.profile_image_url ||
       author.avatar ||
       null;
 
     // Extract media/images from tweet
-    const media = tweet.media || tweet.entities?.media || [];
-    const imageUrl = media.length > 0 && media[0].type === 'photo'
-      ? media[0].url || media[0].media_url_https || media[0].media_url
+    const extendedMedia = tweet.extendedEntities?.media || tweet.entities?.media || tweet.media || [];
+    const imageUrl = extendedMedia.length > 0 && extendedMedia[0].type === 'photo'
+      ? extendedMedia[0].media_url_https || extendedMedia[0].url || extendedMedia[0].media_url
       : null;
 
     // Return metrics in our expected format
