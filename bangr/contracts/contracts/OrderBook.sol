@@ -82,7 +82,7 @@ contract OrderBook is Ownable, ReentrancyGuard {
     event TradeExecuted(
         uint256 indexed marketId,
         address indexed trader,
-        bool indexed isYesShare,
+        bool isYesShare,
         bool isBuy,
         uint256 shares,
         uint256 pricePerShare,
@@ -347,36 +347,48 @@ contract OrderBook is Ownable, ReentrancyGuard {
         bool takerIsBuying
     ) internal {
         Order storage makerOrder = orders[makerOrderId];
-        MarketFactory.Market memory market = marketFactory.getMarket(makerOrder.marketId);
-        uint256 tokenId = makerOrder.isYesShare ? market.yesTokenId : market.noTokenId;
+        
+        {
+            MarketFactory.Market memory market = marketFactory.getMarket(makerOrder.marketId);
+            uint256 tokenId = makerOrder.isYesShare ? market.yesTokenId : market.noTokenId;
 
-        // Calculate taker fee (2%)
-        uint256 takerFee = (cost * TAKER_FEE_PERCENT) / FEE_DENOMINATOR;
-        uint256 netCost = cost - takerFee;
+            // Calculate taker fee (2%)
+            uint256 takerFee = (cost * TAKER_FEE_PERCENT) / FEE_DENOMINATOR;
+            uint256 netCost = cost - takerFee;
 
-        if (takerIsBuying) {
-            // Taker buying shares from maker
-            // Transfer shares from this contract (locked by maker) to taker
-            shareToken.safeTransferFrom(address(this), taker, tokenId, shares, "");
+            if (takerIsBuying) {
+                // Taker buying shares from maker
+                shareToken.safeTransferFrom(address(this), taker, tokenId, shares, "");
+                collateralToken.transfer(makerOrder.maker, netCost);
+            } else {
+                // Taker selling shares to maker
+                shareToken.safeTransferFrom(taker, makerOrder.maker, tokenId, shares, "");
+                collateralToken.transfer(taker, netCost);
+            }
 
-            // Pay maker (minus their locked USDC is already in contract if they were buying)
-            // Since maker was selling, they locked shares, now get USDC
-            collateralToken.transfer(makerOrder.maker, netCost);
-        } else {
-            // Taker selling shares to maker
-            // Transfer shares from taker to maker
-            shareToken.safeTransferFrom(taker, makerOrder.maker, tokenId, shares, "");
-
-            // Pay taker (minus fee)
-            collateralToken.transfer(taker, netCost);
+            // Distribute fees
+            _distributeFees(makerOrder.marketId, takerFee);
         }
-
-        // Distribute fees
-        _distributeFees(makerOrder.marketId, takerFee);
 
         emit OrderFilled(makerOrderId, taker, shares, cost);
         
-        // Emit trade event for tracking purchase history
+        // Emit trade event for tracking purchase history (in separate scope to reduce stack)
+        _emitTradeEvent(makerOrderId, taker, shares, cost, takerIsBuying);
+    }
+    
+    /**
+     * @notice Emit trade event with order details
+     */
+    function _emitTradeEvent(
+        uint256 makerOrderId,
+        address taker,
+        uint256 shares,
+        uint256 cost,
+        bool takerIsBuying
+    ) internal {
+        Order storage makerOrder = orders[makerOrderId];
+        uint256 takerFee = (cost * TAKER_FEE_PERCENT) / FEE_DENOMINATOR;
+        
         emit TradeExecuted(
             makerOrder.marketId,
             taker,
@@ -384,7 +396,7 @@ contract OrderBook is Ownable, ReentrancyGuard {
             takerIsBuying,
             shares,
             makerOrder.pricePerShare,
-            cost + takerFee, // Total cost including fee
+            cost + takerFee,
             block.timestamp
         );
     }
