@@ -33,7 +33,9 @@ export function MarketCardWithData({ market, index, color }: MarketCardWithDataP
     );
   }
 
-  if (error || !tweetData) {
+  // If we have tweet data (even if there's an error message in it), use it
+  // Only fall back if data is completely missing
+  if (!tweetData || (!tweetData.text && !tweetData.authorHandle)) {
     // Fallback to basic display without tweet data
     return (
       <BangrCard
@@ -53,7 +55,7 @@ export function MarketCardWithData({ market, index, color }: MarketCardWithDataP
     );
   }
 
-  // Use real tweet data
+  // Use real tweet data (or rate-limited fallback data)
   return (
     <BangrCard
       id={Number(market.id || market.index)}
@@ -62,6 +64,7 @@ export function MarketCardWithData({ market, index, color }: MarketCardWithDataP
       tweetText={tweetData.text}
       tweetImage={tweetData.imageUrl}
       profileImage={tweetData.avatarUrl}
+      quotedTweet={tweetData.quotedTweet || null}
       tweetMetrics={{
         views: tweetData.views,
         likes: tweetData.likes,

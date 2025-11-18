@@ -20,7 +20,7 @@ export function Header({ onCreateClick }: HeaderProps) {
         {/* Logo Block */}
         <div className="bg-pink-500 nb-border nb-shadow p-4 flex justify-center items-center h-full">
           <h1 className="text-4xl font-black text-white text-shadow-black">
-            BANGR
+          BANGR
           </h1>
         </div>
 

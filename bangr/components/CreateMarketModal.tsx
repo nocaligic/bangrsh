@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { X, ExternalLink, AlertCircle, Loader2 } from "lucide-react";
 import { Input } from "./ui/input";
 import { TransactionStatusAlert } from "./TransactionStatusAlert";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits } from "viem";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { parseUnits, decodeEventLog } from "viem";
 import { ADDRESSES, MARKET_FACTORY_ABI, ERC20_ABI } from "@/lib/contracts";
 import { formatViews } from "@/lib/utils/formatting";
 import { useApprovalFlow } from "@/lib/hooks/useApprovalFlow";
@@ -29,6 +29,8 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
   const [previewData, setPreviewData] = useState<{
     username: string;
+    authorName: string;
+    avatarUrl: string | null;
     text: string;
     tweetId: string;
     quotedTweet?: {
@@ -36,6 +38,7 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
       text: string;
       authorHandle: string;
       authorName: string;
+      avatarUrl?: string | null;
     } | null;
     metrics: {
       views: MetricData;
@@ -46,10 +49,11 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
   } | null>(null);
 
   const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
 
   // Wagmi hook for creating market
   const { writeContract: writeCreateMarket, data: createHash, isPending: isCreatePending } = useWriteContract();
-  const { isLoading: isCreateConfirming, isSuccess: isCreateSuccess, isError: isCreateError, error: createTxError } = useWaitForTransactionReceipt({
+  const { isLoading: isCreateConfirming, isSuccess: isCreateSuccess, isError: isCreateError, error: createTxError, data: createReceipt } = useWaitForTransactionReceipt({
     hash: createHash,
   });
 
@@ -107,8 +111,67 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
 
   // Auto-complete after market creation
   useEffect(() => {
-    if (isCreateSuccess && txStep === "executing") {
+    if (isCreateSuccess && txStep === "executing" && previewData && createReceipt) {
       markSuccess();
+      
+      // Save tweet data to database
+      const saveTweetData = async () => {
+        try {
+          // Extract market ID from MarketCreated event
+          let marketId = 0;
+          
+          if (createReceipt.logs) {
+            for (const log of createReceipt.logs) {
+              try {
+                const decoded = decodeEventLog({
+                  abi: MARKET_FACTORY_ABI,
+                  data: log.data,
+                  topics: log.topics,
+                });
+                
+                if (decoded.eventName === 'MarketCreated') {
+                  marketId = Number(decoded.args.marketId);
+                  console.log('Market created with ID:', marketId);
+                  break;
+                }
+              } catch (e) {
+                // Not a MarketCreated event, continue
+              }
+            }
+          }
+          
+          if (marketId === 0) {
+            console.error("Could not extract market ID from transaction");
+            return;
+          }
+          
+          const response = await fetch("/api/markets/save-tweet-data", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              marketId,
+              tweetId: previewData.tweetId,
+              tweetUrl,
+              authorHandle: previewData.username,
+              endTime: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours from now
+              metric: ['views', 'likes', 'retweets', 'replies'].indexOf(selectedMetric),
+              targetValue: previewData.metrics[selectedMetric].target.toString(),
+              multiplier: 20,
+            }),
+          });
+          
+          if (!response.ok) {
+            console.error("Failed to save tweet data:", await response.text());
+          } else {
+            console.log("Tweet data saved successfully for market", marketId);
+          }
+        } catch (error) {
+          console.error("Error saving tweet data:", error);
+        }
+      };
+      
+      saveTweetData();
+      
       setTimeout(() => {
         setTweetUrl("");
         setPreviewData(null);
@@ -116,7 +179,7 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
         onClose();
       }, 2000);
     }
-  }, [isCreateSuccess, txStep, markSuccess, reset, onClose]);
+  }, [isCreateSuccess, txStep, markSuccess, reset, onClose, previewData, tweetUrl, selectedMetric, createReceipt]);
 
   // Handle market creation error
   useEffect(() => {
@@ -195,6 +258,8 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
 
       setPreviewData({
         username: tweetData.authorHandle,
+        authorName: tweetData.authorName,
+        avatarUrl: tweetData.avatarUrl,
         text: tweetData.text,
         tweetId: tweetData.tweetId,
         quotedTweet: tweetData.quotedTweet || null,
@@ -251,7 +316,7 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div 
-        className="bg-white nb-border nb-shadow p-8 w-full max-w-2xl z-10 max-h-[90vh] overflow-y-auto"
+        className="bg-white nb-border nb-shadow p-8 w-full max-w-3xl z-10 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -293,32 +358,61 @@ export function CreateMarketModal({ isOpen, onClose }: CreateMarketModalProps) {
         {/* Preview - Multi-Metric Selection */}
         {previewData && !isFetchingTweet && (
           <div className="mb-6 space-y-3">
-            {/* Tweet Preview */}
-            <div className="p-4 bg-gray-100 nb-border">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 border-2 border-black flex-shrink-0" />
+            {/* Tweet Preview - Styled like Market Detail Page */}
+            <div className="bg-white nb-border nb-shadow p-5">
+              <div className="flex items-start gap-3 mb-3">
+                {/* Profile Picture */}
+                {previewData.avatarUrl ? (
+                  <img
+                    src={previewData.avatarUrl}
+                    alt={previewData.authorName}
+                    className="w-12 h-12 rounded-full border-2 border-black flex-shrink-0 object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 border-2 border-black flex-shrink-0 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">
+                      {previewData.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-600 mb-1">@{previewData.username} • Now</p>
-                  <p className="text-gray-800 text-sm mb-2">{previewData.text}</p>
-
-                  {/* Quoted Tweet */}
-                  {previewData.quotedTweet && (
-                    <div className="mt-2 p-3 bg-white nb-border rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 border border-black flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-600 mb-1">
-                            @{previewData.quotedTweet.authorHandle}
-                          </p>
-                          <p className="text-gray-700 text-xs line-clamp-3">
-                            {previewData.quotedTweet.text}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <div className="font-bold text-base">{previewData.authorName}</div>
+                  <div className="text-sm text-gray-600">@{previewData.username}</div>
                 </div>
               </div>
+
+              {/* Tweet Text */}
+              <p className="text-gray-900 text-base leading-relaxed mb-3 whitespace-pre-wrap">
+                {previewData.text}
+              </p>
+
+              {/* Quoted Tweet */}
+              {previewData.quotedTweet && (
+                <div className="mt-3 p-4 bg-gray-50 nb-border rounded">
+                  <div className="flex items-start gap-2 mb-2">
+                    {previewData.quotedTweet.avatarUrl ? (
+                      <img
+                        src={previewData.quotedTweet.avatarUrl}
+                        alt={previewData.quotedTweet.authorName}
+                        className="w-8 h-8 rounded-full border border-black flex-shrink-0 object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 border border-black flex-shrink-0 flex items-center justify-center">
+                        <span className="text-white font-semibold text-xs">
+                          {previewData.quotedTweet.authorHandle.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm">{previewData.quotedTweet.authorName}</div>
+                      <div className="text-xs text-gray-600">@{previewData.quotedTweet.authorHandle}</div>
+                    </div>
+                  </div>
+                  <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                    {previewData.quotedTweet.text}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Metric Selection */}

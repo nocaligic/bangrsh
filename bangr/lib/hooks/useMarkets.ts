@@ -36,7 +36,7 @@ export function useMarkets() {
             publicClient.readContract({
               address: ADDRESSES.MARKET_FACTORY,
               abi: MARKET_FACTORY_ABI,
-              functionName: "markets",
+              functionName: "getMarket",
               args: [BigInt(marketId)],
             })
           );

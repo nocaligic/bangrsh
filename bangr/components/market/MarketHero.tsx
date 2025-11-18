@@ -10,6 +10,20 @@ interface MarketHeroProps {
   displayName: string;
   tweetText: string;
   avatarUrl?: string | null;
+  tweetImage?: string | null;
+  quotedTweet?: {
+    tweetId: string;
+    text: string;
+    authorHandle: string;
+    authorName: string;
+    avatarUrl?: string | null;
+  } | null;
+  realMetrics?: {
+    views: number;
+    likes: number;
+    retweets: number;
+    replies: number;
+  } | null;
   formattedTarget: string;
   currentValue: number;
   timeRemaining: string;
@@ -23,6 +37,9 @@ export function MarketHero({
   displayName,
   tweetText,
   avatarUrl,
+  tweetImage,
+  quotedTweet,
+  realMetrics,
   formattedTarget,
   currentValue,
   timeRemaining,
@@ -45,26 +62,68 @@ export function MarketHero({
           </span>
         </div>
 
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-white nb-border overflow-hidden flex items-center justify-center text-xl font-bold">
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span>{username[0]?.toUpperCase() || "?"}</span>
-            )}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-black font-bold text-lg">{displayName}</span>
-              <span className="text-neutral-600">@{username}</span>
+        {/* Tweet content in white box */}
+        <div className="bg-white nb-border p-4 mb-4">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-12 h-12 rounded-full bg-neutral-200 nb-border overflow-hidden flex items-center justify-center text-xl font-bold flex-shrink-0">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{username[0]?.toUpperCase() || "?"}</span>
+              )}
             </div>
-            <p className="text-black/80 text-sm line-clamp-3">{tweetText}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-black font-bold text-base">{displayName}</span>
+                <span className="text-neutral-600 text-sm">@{username}</span>
+              </div>
+              <p className="text-black text-sm leading-relaxed whitespace-pre-wrap break-words">{tweetText}</p>
+            </div>
           </div>
+
+          {/* Tweet image if exists */}
+          {tweetImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={tweetImage}
+              alt="Tweet media"
+              className="w-full nb-border rounded"
+            />
+          )}
+
+          {/* Quoted Tweet */}
+          {quotedTweet && (
+            <div className="mt-3 p-4 bg-gray-50 nb-border rounded">
+              <div className="flex items-start gap-2 mb-2">
+                {quotedTweet.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={quotedTweet.avatarUrl}
+                    alt={quotedTweet.authorName}
+                    className="w-8 h-8 rounded-full border border-black flex-shrink-0 object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 border border-black flex-shrink-0 flex items-center justify-center">
+                    <span className="text-white font-semibold text-xs">
+                      {quotedTweet.authorHandle.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm">{quotedTweet.authorName}</div>
+                  <div className="text-xs text-gray-600">@{quotedTweet.authorHandle}</div>
+                </div>
+              </div>
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                {quotedTweet.text}
+              </p>
+            </div>
+          )}
         </div>
 
         <h1 className="text-xl md:text-2xl font-bold text-black mb-4 font-pixel leading-snug">

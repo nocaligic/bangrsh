@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Market {
+  id            Int      @id
+  tweetId       String
+  tweetUrl      String
+  authorHandle  String
+  createdAt     DateTime @default(now())
+  endTime       DateTime
+  metric        Int      // 0=VIEWS, 1=LIKES, 2=RETWEETS, 3=COMMENTS
+  targetValue   String   // Store as string to handle BigInt
+  multiplier    Int
+  
+  // Tweet data snapshot
+  tweetData     TweetData?
+  
+  // Metric updates
+  metricUpdates MetricUpdate[]
+  
+  @@index([tweetId])
+}
+
+model TweetData {
+  id           Int      @id @default(autoincrement())
+  marketId     Int      @unique
+  market       Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  
+  // Tweet content
+  text         String
+  authorHandle String
+  authorName   String
+  avatarUrl    String?
+  imageUrl     String?
+  
+  // Quote tweet data (if this is a quote tweet)
+  quotedTweetId      String?
+  quotedTweetText    String?
+  quotedAuthorHandle String?
+  quotedAuthorName   String?
+  quotedAvatarUrl    String?
+  
+  // Initial metrics (at market creation)
+  initialViews    Int
+  initialLikes    Int
+  initialRetweets Int
+  initialReplies  Int
+  
+  // Latest metrics (updated periodically)
+  currentViews    Int
+  currentLikes    Int
+  currentRetweets Int
+  currentReplies  Int
+  
+  lastUpdated  DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model MetricUpdate {
+  id        Int      @id @default(autoincrement())
+  marketId  Int
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  
+  views     Int
+  likes     Int
+  retweets  Int
+  replies   Int
+  
+  timestamp DateTime @default(now())
+  
+  @@index([marketId, timestamp])
+}

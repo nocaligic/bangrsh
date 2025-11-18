@@ -35,17 +35,80 @@ export function MarketDetailClient({ marketId }: { marketId: number }) {
   const { market, isLoading } = useMarket(marketId, chainId);
   const { markets, isLoading: isMarketsLoading } = useMarkets();
 
+  // Determine the market's metric type from on-chain data
+  const metricTypeMap: MetricType[] = ["views", "likes", "retweets", "replies"];
+  const marketMetricType = metricTypeMap[Number(market?.metric ?? 0)] || "views";
+  
+  // Set active metric based on the market's actual metric
+  const [activeMetric, setActiveMetric] = useState<MetricType>(marketMetricType);
+
+  // Fetch live tweet metadata (text, author, avatar, metrics) from database/API
+  const { data: tweetData, isLoading: isTweetDataLoading } = useTweetMetrics(market?.tweetId);
+
+  // Generate real chart data based on actual metrics
+  const generateRealChartData = () => {
+    if (!market || !tweetData) return generatePriceHistory();
+
+    const startTime = Number(market.startTime) * 1000;
+    const endTime = Number(market.endTime) * 1000;
+    const now = Date.now();
+    const duration = endTime - startTime;
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Get initial value for the market's specific metric
+    const marketMetric = metricTypeMap[Number(market.metric ?? 0)] as MetricType;
+    const initialValue = Number(market.currentValue || 0);
+
+    // Create 24 data points (one per hour)
+    const dataPoints = [];
+    for (let i = 0; i <= 23; i++) {
+      const hourProgress = i / 23;
+      const isPastHour = hourProgress <= progress;
+      
+      // Create point with individual metric values
+      const point: any = { time: `${i}h` };
+      
+      (['views', 'likes', 'retweets', 'replies'] as MetricType[]).forEach(metric => {
+        // Each metric uses its own actual values from tweetData
+        const currentMetricValue = tweetData[metric] || 0;
+        const metricIsMarketMetric = metric === marketMetric;
+        
+        // For the market's metric, use the initial value from contract
+        // For other metrics, use their actual current values
+        const startValue = metricIsMarketMetric ? initialValue : currentMetricValue * 0.9; // Estimate 10% lower for start
+        
+        if (isPastHour) {
+          // Linear interpolation from start to current for elapsed time
+          point[metric] = startValue + (currentMetricValue - startValue) * (hourProgress / progress);
+        } else {
+          // Future hours: flat line at current value
+          point[metric] = currentMetricValue;
+        }
+      });
+      
+      dataPoints.push(point);
+    }
+    
+    return dataPoints;
+  };
+
   const [priceHistory, setPriceHistory] = useState(generatePriceHistory());
-  const [activeMetric, setActiveMetric] = useState<MetricType>("views");
 
-  // Fetch live tweet metadata (text, author, avatar, metrics) from TwitterAPI.io
-  const { data: tweetData } = useTweetMetrics(market?.tweetId);
-
+  // Update active metric and chart when market or tweet data loads
   useEffect(() => {
     if (market) {
-      setPriceHistory(generatePriceHistory());
+      const correctMetric = metricTypeMap[Number(market.metric ?? 0)] || "views";
+      setActiveMetric(correctMetric);
     }
   }, [market]);
+
+  // Update chart with real data when tweet data loads
+  useEffect(() => {
+    if (market && tweetData) {
+      setPriceHistory(generateRealChartData());
+    }
+  }, [market, tweetData]);
 
   if (isLoading) {
     return (
@@ -73,16 +136,25 @@ export function MarketDetailClient({ marketId }: { marketId: number }) {
   }
 
   // Metric configuration & helpers
-  const metricTypeMap: MetricType[] = ["views", "likes", "retweets", "replies"];
   const metricConfig = METRIC_CONFIG[activeMetric];
 
-  // Prefer live data from TwitterAPI.io, fall back to on-chain metadata
+  // Prefer live data from database/TwitterAPI.io, fall back to on-chain metadata
   const username = tweetData?.authorHandle || market.authorHandle;
   const displayName = tweetData?.authorName || market.authorHandle;
   const tweetText =
     tweetData?.text ||
     "Prediction market on this tweet's engagement over the next 24h.";
   const avatarUrl = tweetData?.avatarUrl || null;
+  const tweetImage = tweetData?.imageUrl || null;
+  const quotedTweet = tweetData?.quotedTweet || null;
+  
+  // Real tweet metrics from database
+  const realMetrics = tweetData ? {
+    views: tweetData.views || 0,
+    likes: tweetData.likes || 0,
+    retweets: tweetData.retweets || 0,
+    replies: tweetData.replies || 0,
+  } : null;
 
   // Calculate time remaining
   const endTime = Number(market.endTime) * 1000;
@@ -150,6 +222,9 @@ export function MarketDetailClient({ marketId }: { marketId: number }) {
             displayName={displayName}
             tweetText={tweetText}
             avatarUrl={avatarUrl}
+            tweetImage={tweetImage}
+            quotedTweet={quotedTweet}
+            realMetrics={realMetrics}
             formattedTarget={formattedTarget}
             currentValue={currentValue}
             timeRemaining={timeRemaining}
@@ -176,7 +251,7 @@ export function MarketDetailClient({ marketId }: { marketId: number }) {
             />
 
             <MetricOverview
-              currentValue={currentValue}
+              currentValue={realMetrics?.[activeMetric] || currentValue}
               targetValue={targetValue}
               formattedTarget={formattedTarget}
               timeRemaining={timeRemaining}

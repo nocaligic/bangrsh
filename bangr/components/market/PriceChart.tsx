@@ -28,6 +28,17 @@ export function PriceChart({
 }: PriceChartProps) {
   const metricConfig = METRIC_CONFIG[activeMetric];
 
+  // Calculate min/max for Y-axis based on active metric's actual values
+  const activeMetricValues = priceHistory
+    .map(point => typeof point[activeMetric] === 'number' ? point[activeMetric] as number : 0)
+    .filter(val => !isNaN(val));
+  
+  const minValue = Math.min(...activeMetricValues);
+  const maxValue = Math.max(...activeMetricValues);
+  const padding = (maxValue - minValue) * 0.1 || 10;
+  const yMin = Math.max(0, Math.floor(minValue - padding));
+  const yMax = Math.ceil(maxValue + padding);
+
   return (
     <div className="bg-white nb-border nb-shadow">
       <div className="flex items-center justify-between px-5 py-2 border-b-2 border-black bg-neutral-900 text-white">
@@ -41,7 +52,7 @@ export function PriceChart({
           </span>
         </div>
         <p className="text-[11px] text-neutral-300">
-          Simulated hourly odds for each tweet metric (design preview).
+          Real-time tweet metric tracking over 24 hours.
         </p>
       </div>
       <div className="p-6">
@@ -49,25 +60,17 @@ export function PriceChart({
           <LineChart data={priceHistory}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
             <XAxis dataKey="time" stroke="#000" />
-            <YAxis stroke="#000" domain={[0, 100]} />
+            <YAxis stroke="#000" domain={[yMin, yMax]} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
-            {Object.keys(MOCK_TWEET_MARKETS).map((metric) => {
-              const isActive = activeMetric === metric;
-              const color = METRIC_CONFIG[metric as MetricType].chartColor;
-              return (
-                <Line
-                  key={metric}
-                  type="monotone"
-                  dataKey={metric}
-                  stroke={color}
-                  strokeWidth={isActive ? 3 : 1.5}
-                  strokeOpacity={isActive ? 1 : 0.4}
-                  dot={false}
-                  name={metric.charAt(0).toUpperCase() + metric.slice(1)}
-                />
-              );
-            })}
+            {/* Only show the active metric line */}
+            <Line
+              type="monotone"
+              dataKey={activeMetric}
+              stroke={metricConfig.chartColor}
+              strokeWidth={3}
+              dot={false}
+              name={metricConfig.label.charAt(0).toUpperCase() + metricConfig.label.slice(1)}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

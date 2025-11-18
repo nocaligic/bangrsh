@@ -8,6 +8,13 @@ interface BangrCardProps {
   tweetText: string;
   tweetImage?: string | null;
   profileImage?: string | null;
+  quotedTweet?: {
+    tweetId: string;
+    text: string;
+    authorHandle: string;
+    authorName: string;
+    avatarUrl?: string | null;
+  } | null;
   tweetMetrics?: {
     views: number;
     likes: number;
@@ -47,6 +54,7 @@ const BangrCard: React.FC<BangrCardProps> = ({
   tweetText,
   tweetImage,
   profileImage,
+  quotedTweet,
   tweetMetrics,
   yesPrice,
   noPrice,
@@ -122,14 +130,43 @@ const BangrCard: React.FC<BangrCardProps> = ({
           </div>
         </div>
         {/* Tweet Text */}
-        <p className="text-sm mb-3">{tweetText}</p>
+        <p className="text-sm mb-3 line-clamp-4">{tweetText}</p>
+        
         {/* Tweet Image - Pinterest style: only show if exists */}
         {tweetImage && (
           <img
             src={tweetImage}
             alt="Tweet"
-            className="w-full h-auto nb-border mb-3 object-cover"
+            className="w-full h-auto nb-border mb-3 object-cover max-h-48"
           />
+        )}
+        
+        {/* Quoted Tweet */}
+        {quotedTweet && (
+          <div className="mt-2 mb-3 p-3 bg-gray-50 nb-border rounded">
+            <div className="flex items-start gap-2 mb-1">
+              {quotedTweet.avatarUrl ? (
+                <img
+                  src={quotedTweet.avatarUrl}
+                  alt={quotedTweet.authorName}
+                  className="w-6 h-6 rounded-full border border-black flex-shrink-0 object-cover"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 border border-black flex-shrink-0 flex items-center justify-center">
+                  <span className="text-white font-semibold text-[10px]">
+                    {quotedTweet.authorHandle.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-xs">{quotedTweet.authorName}</div>
+                <div className="text-[10px] text-gray-600">@{quotedTweet.authorHandle}</div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-700 line-clamp-3">
+              {quotedTweet.text}
+            </p>
+          </div>
         )}
         {/* Tweet Stats */}
         {tweetMetrics && (
